@@ -5,7 +5,6 @@
 
 #define GLM_ENABLE_EXPERIMENTAL //hashable glm vec
 #include <glm/gtx/hash.hpp>
-#include <Eigen/Dense>
 
 using namespace std;
 
@@ -175,9 +174,9 @@ void TriangleMesh::computeTriangles(unordered_map<glm::vec3*, int>& vertices_rep
 void TriangleMesh::generateLODs(ShaderProgram& program, int simplification_mode)
 {
 	// Build Octree
-	int depth_level = 10;
+	int depth_level = 24;
 	tree =  new Octree(glm::vec3(-0.5, 0.f, -0.5), glm::vec3(0.5, 1.f, 0.5), depth_level);
-	for (int i = 0; i < vertices.size(); i++) {
+	for (unsigned int i = 0; i < vertices.size(); i++) {
 		tree->insert(vertices[i]);
 	}
 	// Compute representative vertex per cluster
@@ -190,7 +189,7 @@ void TriangleMesh::generateLODs(ShaderProgram& program, int simplification_mode)
 	unordered_map<glm::vec3*, Eigen::Matrix4f*> vertices_quadric;
 
 	if (simplification_mode == REPRESENTATIVE_MEAN) {
-		tree->computeRepresentatives(representatives, vertices_representative, lod_number);
+		tree->computeRepresentatives(representatives, vertices_representative, vertices_quadric, simplification_mode, lod_number);
 		vector<int> triangle_representatives;
 		computeTriangles(vertices_representative, triangle_representatives);
 		triangle_size = triangle_representatives.size();
@@ -231,9 +230,14 @@ void TriangleMesh::generateLODs(ShaderProgram& program, int simplification_mode)
 					*new_quadric = quadric;
 					vertices_quadric[&vertices[triangles[tri + vrtx]]] = new_quadric;
 				}
-			}			
+			}
 		}
 
+		tree->computeRepresentatives(representatives, vertices_representative, vertices_quadric, simplification_mode, lod_number);
+		vector<int> triangle_representatives;
+		computeTriangles(vertices_representative, triangle_representatives);
+		triangle_size = triangle_representatives.size();
+		sendToOpenGL(program, representatives, triangle_representatives);
 	}
 	return;
 	

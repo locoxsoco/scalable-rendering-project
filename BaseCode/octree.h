@@ -7,6 +7,13 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include <unordered_map>
+#include <Eigen/Dense>
+
+// #define simplification modes
+#define REPRESENTATIVE_MEAN 0
+#define REPRESENTATIVE_QEM 1
+
+
 using namespace std;
 
 // #define x: Right/Left y: Top/Bottom z: Front/Back
@@ -51,8 +58,9 @@ public:
     bool find(glm::vec3& vertex);
 
     void getAllVertices(vector<glm::vec3*> &cluster_vertices, unordered_map<glm::vec3*, int> &vertices_representative, int n_representatives);
-    void computeRepresentatives(vector<glm::vec3*>& representatives, unordered_map<glm::vec3*, int> &vertices_representative, int depth);
-    void calculateRepresentative(vector<glm::vec3*>& representatives, unordered_map<glm::vec3*, int> &vertices_representative, int depth = -1);
+    void computeRepresentatives(vector<glm::vec3*>& representatives, unordered_map<glm::vec3*, int>& vertices_representative, unordered_map<glm::vec3*, Eigen::Matrix4f*> vertices_quadric, int simplification_mode, int depth);
+    void calculateMeanRepresentative(vector<glm::vec3*>& representatives, unordered_map<glm::vec3*, int> &vertices_representative, int depth = -1);
+    void calculateQEMRepresentative(vector<glm::vec3*>& representatives, unordered_map<glm::vec3*, int>& vertices_representative, unordered_map<glm::vec3*, Eigen::Matrix4f*> vertices_quadric, int depth = -1);
 };
 
 #endif // _OCTREE_INCLUDE

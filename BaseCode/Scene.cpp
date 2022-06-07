@@ -65,7 +65,7 @@ Scene::~Scene()
 void Scene::init()
 {
 	// Simplification modes REPRESENTATIVE_MEAN, REPRESENTATIVE_QEM
-	simplification_mode = REPRESENTATIVE_QEM;
+	simplification_mode = REPRESENTATIVE_MEAN;
 	initShaders();
 	cube = new TriangleMesh();
 	cube->buildCube();
@@ -149,7 +149,7 @@ void Scene::transformModel(glm::vec3 traslation) {
 void Scene::render()
 {
 	glm::mat3 normalMatrix;
-	glm::mat4 modelview;
+	//glm::mat4 modelview;
 	glm::vec3 traslate;
 
 	basicProgram.use();

@@ -8,10 +8,6 @@
 #include "ShaderProgram.h"
 #include "octree.h"
 
-// #define simplification modes
-#define REPRESENTATIVE_MEAN 0
-#define REPRESENTATIVE_QEM 1
-
 
 using namespace std;
 
