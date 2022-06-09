@@ -85,6 +85,8 @@ void Scene::init()
 	currentTime = 0.0f;
 	
 	camera.init(glm::vec3(0.f, 0.5f, 2.f));
+
+
 }
 
 // Loads the mesh into CPU memory and sends it to GPU memory (using GL)
@@ -106,13 +108,80 @@ bool Scene::loadMesh(const char *filename, TriangleMesh* &mesh)
 		delete mesh;
 	}
 	mesh = new TriangleMesh();
-	bool bSuccess = reader.readMesh(filename, *mesh);
-	if (bSuccess) {
-		mesh->generateLODs(basicProgram,simplification_mode);
-		//mesh->sendToOpenGL(basicProgram);
+
+	// If LOD files exists then for each LOD file, read it and store their params in the array
+	std::string str_filename = filename;
+	std::string str_simplification_mode_mean = "Mean";
+	std::string str_simplification_mode_qem = "QEM";
+	std::string str_simplification_lod0 = "LOD0";
+	std::string str_simplification_lod1 = "LOD1";
+	std::string str_simplification_lod2 = "LOD2";
+	std::string str_simplification_lod3 = "LOD3";
+	std::string str_extension_file = ".ply";
+	str_filename = str_filename.substr(0, str_filename.size() - 4);
+
+
+
+	if (simplification_mode == REPRESENTATIVE_MEAN &&
+		reader.fileExists(str_filename + str_simplification_mode_mean + str_simplification_lod0 + str_extension_file) &&
+		reader.fileExists(str_filename + str_simplification_mode_mean + str_simplification_lod1 + str_extension_file)&&
+		reader.fileExists(str_filename + str_simplification_mode_mean + str_simplification_lod2 + str_extension_file)&&
+		reader.fileExists(str_filename + str_simplification_mode_mean + str_simplification_lod3 + str_extension_file)) {
+
+		bool bSuccess = reader.readMesh(str_filename + str_simplification_mode_mean + str_simplification_lod0 + str_extension_file, *mesh);
+		if (bSuccess) {
+			mesh->generateLOD(basicProgram, 0);
+		}
+
+		bSuccess = reader.readMesh(str_filename + str_simplification_mode_mean + str_simplification_lod1 + str_extension_file, *mesh);
+		if (bSuccess) {
+			mesh->generateLOD(basicProgram, 1);
+		}
+
+		bSuccess = reader.readMesh(str_filename + str_simplification_mode_mean + str_simplification_lod2 + str_extension_file, *mesh);
+		if (bSuccess) {
+			mesh->generateLOD(basicProgram, 2);
+		}
+
+		bSuccess = reader.readMesh(str_filename + str_simplification_mode_mean + str_simplification_lod3 + str_extension_file, *mesh);
+		if (bSuccess) {
+			mesh->generateLOD(basicProgram, 3);
+		}
 	}
-	
-	return bSuccess;
+	else if (simplification_mode == REPRESENTATIVE_QEM &&
+		reader.fileExists(str_filename + str_simplification_mode_qem + str_simplification_lod0 + str_extension_file) &&
+		reader.fileExists(str_filename + str_simplification_mode_qem + str_simplification_lod1 + str_extension_file) &&
+		reader.fileExists(str_filename + str_simplification_mode_qem + str_simplification_lod2 + str_extension_file) &&
+		reader.fileExists(str_filename + str_simplification_mode_qem + str_simplification_lod3 + str_extension_file)) {
+		
+		bool bSuccess = reader.readMesh(str_filename + str_simplification_mode_qem + str_simplification_lod0 + str_extension_file, *mesh);
+		if (bSuccess) {
+			mesh->generateLOD(basicProgram, 0);
+		}
+
+		bSuccess = reader.readMesh(str_filename + str_simplification_mode_qem + str_simplification_lod1 + str_extension_file, *mesh);
+		if (bSuccess) {
+			mesh->generateLOD(basicProgram, 1);
+		}
+
+		bSuccess = reader.readMesh(str_filename + str_simplification_mode_qem + str_simplification_lod2 + str_extension_file, *mesh);
+		if (bSuccess) {
+			mesh->generateLOD(basicProgram, 2);
+		}
+
+		bSuccess = reader.readMesh(str_filename + str_simplification_mode_qem + str_simplification_lod3 + str_extension_file, *mesh);
+		if (bSuccess) {
+			mesh->generateLOD(basicProgram, 3);
+		}
+	}
+	else {
+		// Else generate the LODs from base file, store their params in the array and write LOD files
+		bool bSuccess = reader.readMesh(filename, *mesh);
+		if (bSuccess) {
+			mesh->generateLODs(basicProgram, simplification_mode, filename);
+		}
+		return bSuccess;
+	}
 }
 
 void Scene::update(int deltaTime)
@@ -165,43 +234,43 @@ void Scene::render()
 		basicProgram.setUniformMatrix4f("modelview", camera.getModelViewMatrix());
 		normalMatrix = glm::inverseTranspose(camera.getModelViewMatrix());
 		basicProgram.setUniformMatrix3f("normalMatrix", normalMatrix);
-		new_mesh->render();
+		new_mesh->render(3);
 
 		traslate = glm::vec3(1.f, 0.f, 0.f);
 		transformModel(traslate);
-		new_mesh->render();
+		new_mesh->render(3);
 
 		traslate = glm::vec3(2.f, 0.f, 0.f);
 		transformModel(traslate);
-		new_mesh->render();
+		new_mesh->render(3);
 
 		traslate = glm::vec3(3.f, 0.f, 0.f);
 		transformModel(traslate);
-		new_mesh->render();
+		new_mesh->render(3);
 
 		traslate = glm::vec3(4.f, 0.f, 0.f);
 		transformModel(traslate);
-		new_mesh->render();
+		new_mesh->render(3);
 
 		traslate = glm::vec3(1.f, 0.f, 1.f);
 		transformModel(traslate);
-		new_mesh->render();
+		new_mesh->render(3);
 
 		traslate = glm::vec3(2.f, 0.f, 1.f);
 		transformModel(traslate);
-		new_mesh->render();
+		new_mesh->render(3);
 
 		traslate = glm::vec3(3.f, 0.f, 1.f);
 		transformModel(traslate);
-		new_mesh->render();
+		new_mesh->render(3);
 
 		traslate = glm::vec3(4.f, 0.f, 1.f);
 		transformModel(traslate);
-		new_mesh->render();
+		new_mesh->render(3);
 
 		traslate = glm::vec3(0.f, 0.f, 1.f);
 		transformModel(traslate);
-		new_mesh->render();
+		new_mesh->render(3);
 	}
 }
 

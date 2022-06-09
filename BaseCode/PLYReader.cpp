@@ -8,6 +8,17 @@
 // and finally the face data. Then it rescales the model so that it fits a
 // box of size 1x1x1 centered at the origin
 
+bool PLYReader::fileExists(const string& filename)
+{
+	ifstream fin;
+
+	fin.open(filename.c_str(), ios_base::in | ios_base::binary);
+	if (!fin.is_open())
+		return false;
+	
+	return true;
+}
+
 bool PLYReader::readMesh(const string &filename, TriangleMesh &mesh)
 {
 	ifstream fin;

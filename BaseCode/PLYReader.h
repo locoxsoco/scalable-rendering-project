@@ -17,6 +17,7 @@ class PLYReader
 
 public:
 	static bool readMesh(const string &filename, TriangleMesh &mesh);
+	static bool fileExists(const string& filename);
 
 private:
 	static bool loadHeader(ifstream &fin, int &nVertices, int &nFaces);

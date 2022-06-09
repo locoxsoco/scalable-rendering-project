@@ -6,13 +6,15 @@
 #define GLM_ENABLE_EXPERIMENTAL //hashable glm vec
 #include <glm/gtx/hash.hpp>
 
+#include "PLYWritter.h"
+
 using namespace std;
 
 
 TriangleMesh::TriangleMesh()
 {
-	vao_lod0 = -1;
-	vbo_lod0 = -1;
+	vao_lod[0] = -1;
+	vbo_lod[0] = -1;
 }
 
 TriangleMesh::~TriangleMesh()
@@ -71,7 +73,7 @@ void TriangleMesh::buildCube()
 		addVertex(0.5f * glm::vec3(vertices[3*i], vertices[3*i+1], vertices[3*i+2]));
 	for(i=0; i<12; i++)
 		addTriangle(faces[3*i], faces[3*i+1], faces[3*i+2]);
-	triangle_size = triangles.size();
+	triangle_size[0] = triangles.size();
 }
 
 void TriangleMesh::sendToOpenGL(ShaderProgram &program)
@@ -98,10 +100,10 @@ void TriangleMesh::sendToOpenGL(ShaderProgram &program)
 	}
 
   // Send data to OpenGL
-	glGenVertexArrays(1, &vao_lod0);
-	glBindVertexArray(vao_lod0);
-	glGenBuffers(1, &vbo_lod0);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_lod0);
+	glGenVertexArrays(1, &vao_lod[0]);
+	glBindVertexArray(vao_lod[0]);
+	glGenBuffers(1, &vbo_lod[0]);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_lod[0]);
 	glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), &data[0], GL_STATIC_DRAW);
 	posLocation = program.bindVertexAttribute("position", 3, 6 * sizeof(float), 0);
 	normalLocation = program.bindVertexAttribute("normal", 3, 6*sizeof(float), (void *)(3*sizeof(float)));
@@ -110,7 +112,43 @@ void TriangleMesh::sendToOpenGL(ShaderProgram &program)
 
 }
 
-void TriangleMesh::sendToOpenGL(ShaderProgram& program, vector<glm::vec3*>& representatives, vector<int> triangle_representatives)
+void TriangleMesh::sendToOpenGL(ShaderProgram& program, int lod)
+{
+	vector<float> data;
+
+	for (unsigned int tri = 0; tri < triangles.size(); tri += 3)
+	{
+		glm::vec3 normal;
+
+		normal = glm::cross(vertices[triangles[tri + 1]] - vertices[triangles[tri]],
+			vertices[triangles[tri + 2]] - vertices[triangles[tri]]);
+		normal = glm::normalize(normal);
+		for (unsigned int vrtx = 0; vrtx < 3; vrtx++)
+		{
+			data.push_back(vertices[triangles[tri + vrtx]].x);
+			data.push_back(vertices[triangles[tri + vrtx]].y);
+			data.push_back(vertices[triangles[tri + vrtx]].z);
+
+			data.push_back(normal.x);
+			data.push_back(normal.y);
+			data.push_back(normal.z);
+		}
+	}
+
+	// Send data to OpenGL
+	glGenVertexArrays(1, &vao_lod[lod]);
+	glBindVertexArray(vao_lod[lod]);
+	glGenBuffers(1, &vbo_lod[lod]);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_lod[lod]);
+	glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), &data[0], GL_STATIC_DRAW);
+	posLocation = program.bindVertexAttribute("position", 3, 6 * sizeof(float), 0);
+	normalLocation = program.bindVertexAttribute("normal", 3, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
+}
+
+void TriangleMesh::sendToOpenGL(ShaderProgram& program, vector<glm::vec3*>& representatives, vector<int> triangle_representatives, int lod_number)
 {
 	vector<float> data;
 
@@ -134,10 +172,10 @@ void TriangleMesh::sendToOpenGL(ShaderProgram& program, vector<glm::vec3*>& repr
 	}
 
 	// Send data to OpenGL
-	glGenVertexArrays(1, &vao_lod0);
-	glBindVertexArray(vao_lod0);
-	glGenBuffers(1, &vbo_lod0);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_lod0);
+	glGenVertexArrays(1, &vao_lod[lod_number]);
+	glBindVertexArray(vao_lod[lod_number]);
+	glGenBuffers(1, &vbo_lod[lod_number]);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_lod[lod_number]);
 	glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), &data[0], GL_STATIC_DRAW);
 	posLocation = program.bindVertexAttribute("position", 3, 6 * sizeof(float), 0);
 	normalLocation = program.bindVertexAttribute("normal", 3, 6 * sizeof(float), (void*)(3 * sizeof(float)));
@@ -148,10 +186,19 @@ void TriangleMesh::sendToOpenGL(ShaderProgram& program, vector<glm::vec3*>& repr
 
 void TriangleMesh::render() const
 {
-	glBindVertexArray(vao_lod0);
+	glBindVertexArray(vao_lod[0]);
 	glEnableVertexAttribArray(posLocation);
 	glEnableVertexAttribArray(normalLocation);
-	glDrawArrays(GL_TRIANGLES, 0, triangle_size);
+	glDrawArrays(GL_TRIANGLES, 0, triangle_size[0]);
+	glBindVertexArray(0);
+}
+
+void TriangleMesh::render(int lod_number) const
+{
+	glBindVertexArray(vao_lod[lod_number]);
+	glEnableVertexAttribArray(posLocation);
+	glEnableVertexAttribArray(normalLocation);
+	glDrawArrays(GL_TRIANGLES, 0, triangle_size[lod_number]);
 	glBindVertexArray(0);
 }
 
@@ -171,7 +218,12 @@ void TriangleMesh::computeTriangles(unordered_map<glm::vec3*, int>& vertices_rep
 	return;
 }
 
-void TriangleMesh::generateLODs(ShaderProgram& program, int simplification_mode)
+void TriangleMesh::generateLOD(ShaderProgram& program, int lod) {
+	triangle_size[lod] = triangles.size();
+	sendToOpenGL(program, lod);
+}
+
+void TriangleMesh::generateLODs(ShaderProgram& program, int simplification_mode, const char* filename)
 {
 	// Build Octree
 	int depth_level = 24;
@@ -180,64 +232,82 @@ void TriangleMesh::generateLODs(ShaderProgram& program, int simplification_mode)
 		tree->insert(vertices[i]);
 	}
 	// Compute representative vertex per cluster
-	int lod_number = 5;
-	
-	vector<glm::vec3*> representatives;
-	unordered_map<glm::vec3*, int> vertices_representative;
+	int lod_number[4] = {14,11,8,5};
 
-	vector<glm::vec3*> quadrics;
-	unordered_map<glm::vec3*, Eigen::Matrix4f*> vertices_quadric;
+	for (unsigned int i = 0; i < 4; i++) {
 
-	if (simplification_mode == REPRESENTATIVE_MEAN) {
-		tree->computeRepresentatives(representatives, vertices_representative, vertices_quadric, simplification_mode, lod_number);
-		vector<int> triangle_representatives;
-		computeTriangles(vertices_representative, triangle_representatives);
-		triangle_size = triangle_representatives.size();
-		sendToOpenGL(program, representatives, triangle_representatives);
-	}
-	else if (simplification_mode == REPRESENTATIVE_QEM) {
-		for (unsigned int tri = 0; tri < triangles.size(); tri+=3) {
-			glm::vec3 normal;
-			normal = glm::cross(vertices[triangles[tri + 1]] - vertices[triangles[tri]],
-				vertices[triangles[tri + 2]] - vertices[triangles[tri]]);
-			normal = glm::normalize(normal);
+		vector<glm::vec3*> representatives;
+		unordered_map<glm::vec3*, int> vertices_representative;
 
-			Eigen::Matrix4f quadric;
-			float d = -normal.x * vertices[triangles[tri]].x - normal.y * vertices[triangles[tri]].y - normal.z * vertices[triangles[tri]].z;
-			float a2 = normal.x * normal.x;
-			float ab = normal.x * normal.y;
-			float ac = normal.x * normal.z;
-			float ad = normal.x * d;
-			float b2 = normal.y * normal.y;
-			float bc = normal.y * normal.z;
-			float bd = normal.y * d;
-			float c2 = normal.z * normal.z;
-			float cd = normal.z * d;
-			float d2 = d * d;
-			quadric <<
-				a2, ab, ac, ad,
-				ab, b2, bc, bd,
-				ac, bc, c2, cd,
-				ad, bd, cd, d2;
+		vector<glm::vec3*> quadrics;
+		unordered_map<glm::vec3*, Eigen::Matrix4f*> vertices_quadric;
 
-			for (unsigned int vrtx = 0; vrtx < 3; vrtx++)
-			{
-				if (vertices_quadric.find(&vertices[triangles[tri + vrtx]]) != vertices_quadric.end()) {
-					*vertices_quadric[&vertices[triangles[tri + vrtx]]] = *vertices_quadric[&vertices[triangles[tri + vrtx]]] + quadric;
-				}
-				else {
-					Eigen::Matrix4f* new_quadric = new Eigen::Matrix4f();
-					*new_quadric = quadric;
-					vertices_quadric[&vertices[triangles[tri + vrtx]]] = new_quadric;
+		if (simplification_mode == REPRESENTATIVE_MEAN) {
+			tree->computeRepresentatives(representatives, vertices_representative, vertices_quadric, simplification_mode, lod_number[i]);
+			vector<int> triangle_representatives;
+			computeTriangles(vertices_representative, triangle_representatives);
+			triangle_size[i] = triangle_representatives.size();
+
+#pragma warning( push )
+#pragma warning( disable : 4101)
+			PLYWritter writter;
+#pragma warning( pop )
+
+			std::string str_filename = filename;
+			std::string str_simplification_mode_mean = "Mean";
+			std::string str_simplification_mode_qem = "QEM";
+			std::string str_simplification_lod[4] = { "LOD0","LOD1","LOD2","LOD3" };
+			std::string str_extension_file = ".ply";
+			str_filename = str_filename.substr(0, str_filename.size() - 4);
+			writter.writeMesh(str_filename+ str_simplification_mode_mean+ str_simplification_lod[i]+ str_extension_file, representatives, triangle_representatives);
+
+			sendToOpenGL(program, representatives, triangle_representatives, i);
+		}
+		else if (simplification_mode == REPRESENTATIVE_QEM) {
+			for (unsigned int tri = 0; tri < triangles.size(); tri += 3) {
+				glm::vec3 normal;
+				normal = glm::cross(vertices[triangles[tri + 1]] - vertices[triangles[tri]],
+					vertices[triangles[tri + 2]] - vertices[triangles[tri]]);
+				normal = glm::normalize(normal);
+
+				Eigen::Matrix4f quadric;
+				float d = -normal.x * vertices[triangles[tri]].x - normal.y * vertices[triangles[tri]].y - normal.z * vertices[triangles[tri]].z;
+				float a2 = normal.x * normal.x;
+				float ab = normal.x * normal.y;
+				float ac = normal.x * normal.z;
+				float ad = normal.x * d;
+				float b2 = normal.y * normal.y;
+				float bc = normal.y * normal.z;
+				float bd = normal.y * d;
+				float c2 = normal.z * normal.z;
+				float cd = normal.z * d;
+				float d2 = d * d;
+				quadric <<
+					a2, ab, ac, ad,
+					ab, b2, bc, bd,
+					ac, bc, c2, cd,
+					ad, bd, cd, d2;
+
+				for (unsigned int vrtx = 0; vrtx < 3; vrtx++)
+				{
+					if (vertices_quadric.find(&vertices[triangles[tri + vrtx]]) != vertices_quadric.end()) {
+						*vertices_quadric[&vertices[triangles[tri + vrtx]]] = *vertices_quadric[&vertices[triangles[tri + vrtx]]] + quadric;
+					}
+					else {
+						Eigen::Matrix4f* new_quadric = new Eigen::Matrix4f();
+						*new_quadric = quadric;
+						vertices_quadric[&vertices[triangles[tri + vrtx]]] = new_quadric;
+					}
 				}
 			}
-		}
 
-		tree->computeRepresentatives(representatives, vertices_representative, vertices_quadric, simplification_mode, lod_number);
-		vector<int> triangle_representatives;
-		computeTriangles(vertices_representative, triangle_representatives);
-		triangle_size = triangle_representatives.size();
-		sendToOpenGL(program, representatives, triangle_representatives);
+			tree->computeRepresentatives(representatives, vertices_representative, vertices_quadric, simplification_mode, lod_number[i]);
+			vector<int> triangle_representatives;
+			computeTriangles(vertices_representative, triangle_representatives);
+			triangle_size[i] = triangle_representatives.size();
+
+			sendToOpenGL(program, representatives, triangle_representatives, i);
+		}
 	}
 	return;
 	
@@ -245,17 +315,15 @@ void TriangleMesh::generateLODs(ShaderProgram& program, int simplification_mode)
 
 void TriangleMesh::free()
 {
-	if (vbo_lod0 != -1) {
-		glDeleteBuffers(1, &vbo_lod0);
-		glDeleteBuffers(1, &vbo_lod1);
-		glDeleteBuffers(1, &vbo_lod2);
-		glDeleteBuffers(1, &vbo_lod3);
+	if (vbo_lod[0] != -1) {
+		for (unsigned int i = 0; i < 4; i++) {
+			glDeleteBuffers(1, &vbo_lod[i]);
+		}
 	}
-	if (vao_lod0 != -1) {
-		glDeleteVertexArrays(1, &vao_lod0);
-		glDeleteVertexArrays(1, &vao_lod1);
-		glDeleteVertexArrays(1, &vao_lod2);
-		glDeleteVertexArrays(1, &vao_lod3);
+	if (vao_lod[0] != -1) {
+		for (unsigned int i = 0; i < 4; i++) {
+			glDeleteVertexArrays(1, &vao_lod[i]);
+		}
 	}
 	
 	vertices.clear();

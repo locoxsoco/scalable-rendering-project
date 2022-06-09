@@ -34,21 +34,24 @@ public:
 	void buildCube();
 	
 	void computeTriangles(unordered_map<glm::vec3*, int>& vertices_representative, vector<int> &triangle_representatives);
-	void generateLODs(ShaderProgram &program, int simplification_mode);
+	void generateLODs(ShaderProgram &program, int simplification_mode, const char* filename);
+	void generateLOD(ShaderProgram& program, int lod);
 	void sendToOpenGL(ShaderProgram &program);
-	void sendToOpenGL(ShaderProgram& program, vector<glm::vec3*>& representatives, vector<int> triangle_representatives);
+	void sendToOpenGL(ShaderProgram& program, int lod);
+	void sendToOpenGL(ShaderProgram& program, vector<glm::vec3*>& representatives, vector<int> triangle_representatives, int lod_number);
 	void render() const;
+	void render(int lod_number) const;
 	void free();
+	vector<glm::vec3> vertices;
+	vector<int> triangles;
 
-private:
-  vector<glm::vec3> vertices;
-  vector<int> triangles;
+private: 
 
-	GLuint vao_lod0, vao_lod1, vao_lod2, vao_lod3;
-	GLuint vbo_lod0, vbo_lod1, vbo_lod2, vbo_lod3;
+	GLuint vao_lod[4];
+	GLuint vbo_lod[4];
 	GLint posLocation, normalLocation;
 
-	int triangle_size;
+	int triangle_size[4];
 
 	Octree *tree;
 	

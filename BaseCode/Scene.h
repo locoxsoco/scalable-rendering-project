@@ -8,10 +8,21 @@
 #include "TriangleMesh.h"
 
 
+// Benefit Cost Mesh Structure
+class BC_Mesh {
+	TriangleMesh *mesh;
+	float benefits[4];
+	float costs[4];
+};
+
+// Time Critical Mesh Structure
+class TC_Mesh {
+	BC_Mesh bc_mesh;
+	int current_lod = 4;
+};
+
 // Scene contains all the entities of our game.
 // It is responsible for updating and render them.
-
-
 class Scene
 {
 
@@ -55,6 +66,8 @@ private:
 	ShaderProgram basicProgram;
 	float currentTime;
 	int simplification_mode;
+
+
 
 };
 
